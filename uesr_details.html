@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users Data</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: #141e30; color: white; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        h2 { color: #00d2ff; }
+        .back-btn { background: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        
+        .user-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .user-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+        .user-card p { font-size: 14px; margin-bottom: 5px; color: #ccc; }
+        .user-card span { font-weight: bold; color: white; }
+        .status-active { color: #00ff88; font-weight: bold; }
+        .status-unactive { color: #ff4d4d; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>All Registered Users</h2>
+        <button class="back-btn" onclick="location.href='admin_home.html'">Back</button>
+    </div>
+    
+    <div class="user-grid" id="usersContainer">Loading users...</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    db.ref("users").on("value", snap => {
+        let html = "";
+        snap.forEach(child => {
+            let u = child.val();
+            let stClass = u.status === "active" ? "status-active" : "status-unactive";
+            html += `
+                <div class="user-card">
+                    <p>Name: <span>${u.name}</span></p>
+                    <p>Number: <span>${u.number}</span></p>
+                    <p>Password: <span style="color:#ff9900;">${u.password}</span></p>
+                    <p>Balance: <span style="color:#00d2ff;">${u.balance || 0} ৳</span></p>
+                    <p>Active Referrals: <span>${u.active_referral_count || 0}</span></p>
+                    <p>Status: <span class="${stClass}">${u.status.toUpperCase()}</span></p>
+                </div>
+            `;
+        });
+        document.getElementById("usersContainer").innerHTML = html;
+    });
+</script>
+</body>
+</html>
