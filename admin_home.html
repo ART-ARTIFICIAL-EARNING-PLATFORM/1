@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: #0f2027; color: white; padding: 20px; }
+        h1 { text-align: center; color: #00d2ff; margin-bottom: 20px; text-transform: uppercase; }
+        
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card {
+            background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .stat-card h2 { font-size: 28px; color: #00ff88; }
+        .stat-card p { font-size: 13px; color: #ccc; }
+
+        /* Menu Grid */
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .menu-btn {
+            background: linear-gradient(135deg, rgba(0, 210, 255, 0.2), rgba(58, 123, 213, 0.2));
+            border: 1px solid #00d2ff; padding: 20px; border-radius: 15px; color: white;
+            font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; position: relative;
+        }
+        .menu-btn:hover { background: #00d2ff; color: #0f2027; transform: translateY(-5px); }
+        .menu-btn i { font-size: 30px; display: block; margin-bottom: 10px; }
+        .badge {
+            position: absolute; top: -10px; right: -10px; background: #ff4d4d; color: white;
+            width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: bold; box-shadow: 0 0 10px red;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Admin Control Panel</h1>
+
+    <div class="stats-grid">
+        <div class="stat-card"> <h2 id="stActiveUsers">0</h2> <p>Active Users</p> </div>
+        <div class="stat-card"> <h2 id="stUnactiveUsers">0</h2> <p>Unactive Users</p> </div>
+        <div class="stat-card"> <h2 id="stTotalBalance" style="color:#00d2ff;">0 ৳</h2> <p>Total User Balance</p> </div>
+        <div class="stat-card"> <h2 id="stSuccessTasks">0</h2> <p>Total Success Tasks</p> </div>
+        <div class="stat-card"> <h2 id="stFailedTasks" style="color:#ff4d4d;">0</h2> <p>Total Failed Tasks</p> </div>
+    </div>
+
+    <div class="menu-grid">
+        <button class="menu-btn" onclick="location.href='task_request.html'">
+            <i class="fas fa-briefcase"></i> Task Requests
+            <div class="badge" id="taskBadge" style="display:none;">0</div>
+        </button>
+        <button class="menu-btn" onclick="location.href='uesr_details.html'">
+            <i class="fas fa-users"></i> User Details
+        </button>
+        <button class="menu-btn" onclick="location.href='withdrawal_admin.html'">
+            <i class="fas fa-money-bill-wave"></i> Withdrawals
+            <div class="badge" id="withBadge" style="display:none;">0</div>
+        </button>
+        <button class="menu-btn" onclick="location.href='referral_setting.html'">
+            <i class="fas fa-cogs"></i> Referral Settings
+        </button>
+    </div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489",
+        storageBucket: "fir-f4489.firebasestorage.app",
+        messagingSenderId: "641154105850",
+        appId: "1:641154105850:web:c0525183fcc96b5e9d6443"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Text-to-Speech function for Voice Notification
+    function playVoiceAlert(text) {
+        let msg = new SpeechSynthesisUtterance();
+        msg.text = text;
+        msg.lang = "en-US";
+        window.speechSynthesis.speak(msg);
+    }
+
+    // Load Overall Stats
+    db.ref("users").on("value", snap => {
+        let active = 0, unactive = 0, balance = 0, success = 0, failed = 0;
+        snap.forEach(child => {
+            let u = child.val();
+            if(u.status === "active") active++; else unactive++;
+            balance += (u.balance || 0);
+            success += (u.completed_tasks || 0);
+            failed += (u.failed_tasks || 0);
+        });
+        document.getElementById("stActiveUsers").innerText = active;
+        document.getElementById("stUnactiveUsers").innerText = unactive;
+        document.getElementById("stTotalBalance").innerText = balance + " ৳";
+        document.getElementById("stSuccessTasks").innerText = success;
+        document.getElementById("stFailedTasks").innerText = failed;
+    });
+
+    // Listen for Task Requests & Reviews + Trigger Voice Notification
+    db.ref("task_requests").on("value", snap => {
+        let count = 0;
+        snap.forEach(child => count++);
+        let badge = document.getElementById("taskBadge");
+        if(count > 0) { badge.style.display = "flex"; badge.innerText = count; } else { badge.style.display = "none"; }
+    });
+
+    // Voice triggers for new/changed task states
+    db.ref("task_requests").on("child_added", snap => {
+        let req = snap.val();
+        if(req.status === "pending") playVoiceAlert("Sir, New task request from " + req.name);
+        else if(req.status === "submitted") playVoiceAlert("Sir, Task submitted by " + req.name + " for review");
+    });
+    db.ref("task_requests").on("child_changed", snap => {
+        let req = snap.val();
+        if(req.status === "submitted") playVoiceAlert("Sir, Task submitted by " + req.name + " for review");
+    });
+
+    // Withdraw badge count
+    db.ref("withdraw_requests").on("value", snap => {
+        let count = 0;
+        snap.forEach(child => { if(child.val().status === "pending") count++; });
+        let badge = document.getElementById("withBadge");
+        if(count > 0) { badge.style.display = "flex"; badge.innerText = count; } else { badge.style.display = "none"; }
+    });
+</script>
+</body>
+</html>
