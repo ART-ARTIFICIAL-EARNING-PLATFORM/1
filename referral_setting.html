@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral Settings - Admin</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh; color: white; padding: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .header { width: 100%; max-width: 500px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        .header h2 { color: #00d2ff; }
+        .back-btn { background: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .back-btn:hover { background: #ff1a1a; }
+
+        .settings-card {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px;
+            padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            animation: zoomIn 0.5s ease;
+        }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        .info-box {
+            background: rgba(0, 210, 255, 0.1); border-left: 4px solid #00d2ff;
+            padding: 12px; border-radius: 8px; font-size: 13px; color: #ddd; margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 14px; font-weight: bold; color: #00ff88; margin-bottom: 8px; }
+        .input-group label i { margin-right: 5px; }
+        
+        .input-wrapper { display: flex; align-items: center; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); overflow: hidden; transition: 0.3s; }
+        .input-wrapper:focus-within { border-color: #00d2ff; box-shadow: 0 0 10px rgba(0, 210, 255, 0.2); }
+        .currency { padding: 12px 15px; background: rgba(255,255,255,0.1); color: #00d2ff; font-weight: bold; }
+        
+        .input-wrapper input {
+            flex: 1; background: transparent; border: none; padding: 12px; color: white;
+            font-size: 16px; font-weight: bold; outline: none;
+        }
+
+        .btn-save {
+            width: 100%; background: linear-gradient(to right, #00d2ff, #3a7bd5); color: #0f2027;
+            border: none; padding: 15px; border-radius: 25px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.3s; margin-top: 10px; box-shadow: 0 5px 15px rgba(0, 210, 255, 0.3);
+        }
+        .btn-save:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 210, 255, 0.5); color: white; }
+
+        /* Toast */
+        #toast {
+            visibility: hidden; background-color: #00ff88; color: #0f2027; text-align: center;
+            border-radius: 10px; padding: 12px 20px; position: fixed; z-index: 100; top: 20px; right: 20px;
+            font-weight: bold; box-shadow: 0 5px 15px rgba(0,255,136,0.4); transform: translateX(100%); transition: 0.5s;
+        }
+        #toast.show { visibility: visible; transform: translateX(0); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Referral Setup</h2>
+        <button class="back-btn" onclick="location.href='admin_home.html'"><i class="fas fa-arrow-left"></i> Back</button>
+    </div>
+
+    <div class="settings-card">
+        <div class="info-box">
+            <i class="fas fa-info-circle"></i> Setup the bonus amount users will receive when their referrals become <b>ACTIVE</b> (complete 3 tasks).
+        </div>
+
+        <!-- Level 1 -->
+        <div class="input-group">
+            <label><i class="fas fa-user-friends"></i> Level 1 (Direct Partner)</label>
+            <div class="input-wrapper">
+                <span class="currency">৳</span>
+                <input type="number" id="lvl1" placeholder="Enter amount (e.g. 50)">
+            </div>
+            <small style="color:#aaa; font-size:11px; margin-top:5px; display:block;">When someone joins using their code directly.</small>
+        </div>
+
+        <!-- Level 2 -->
+        <div class="input-group">
+            <label><i class="fas fa-project-diagram"></i> Level 2 (Downline Partner)</label>
+            <div class="input-wrapper">
+                <span class="currency">৳</span>
+                <input type="number" id="lvl2" placeholder="Enter amount (e.g. 20)">
+            </div>
+            <small style="color:#aaa; font-size:11px; margin-top:5px; display:block;">When their Level 1 partner invites someone.</small>
+        </div>
+
+        <!-- Level 3 -->
+        <div class="input-group">
+            <label><i class="fas fa-sitemap"></i> Level 3 (Deep Downline)</label>
+            <div class="input-wrapper">
+                <span class="currency">৳</span>
+                <input type="number" id="lvl3" placeholder="Enter amount (e.g. 10)">
+            </div>
+            <small style="color:#aaa; font-size:11px; margin-top:5px; display:block;">When their Level 2 partner invites someone.</small>
+        </div>
+
+        <button class="btn-save" onclick="saveConfig()"><i class="fas fa-save"></i> Save Configuration</button>
+    </div>
+
+    <div id="toast"><i class="fas fa-check-circle"></i> Settings Saved Successfully!</div>
+
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489",
+        storageBucket: "fir-f4489.firebasestorage.app",
+        messagingSenderId: "641154105850",
+        appId: "1:641154105850:web:c0525183fcc96b5e9d6443"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const settingsRef = db.ref("admin_settings/referral_pricing");
+
+    // Load Existing Settings
+    settingsRef.once("value", snapshot => {
+        if(snapshot.exists()) {
+            let data = snapshot.val();
+            document.getElementById("lvl1").value = data.level_1 || "";
+            document.getElementById("lvl2").value = data.level_2 || "";
+            document.getElementById("lvl3").value = data.level_3 || "";
+        }
+    });
+
+    // Save Settings
+    function saveConfig() {
+        let l1 = document.getElementById("lvl1").value;
+        let l2 = document.getElementById("lvl2").value;
+        let l3 = document.getElementById("lvl3").value;
+
+        if(!l1 || !l2 || !l3) {
+            alert("Please fill all the level amounts!");
+            return;
+        }
+
+        settingsRef.set({
+            level_1: Number(l1),
+            level_2: Number(l2),
+            level_3: Number(l3),
+            last_updated: new Date().toLocaleString()
+        }).then(() => {
+            showToast();
+        }).catch(err => {
+            alert("Error saving settings: " + err.message);
+        });
+    }
+
+    // Toast Notification
+    function showToast() {
+        let toast = document.getElementById("toast");
+        toast.className = "show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+</script>
+</body>
+</html>
