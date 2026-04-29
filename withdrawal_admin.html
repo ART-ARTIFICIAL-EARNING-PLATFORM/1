@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdraw Requests</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: #141e30; color: white; padding: 20px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px; }
+        h2 { color: #00d2ff; }
+        
+        .req-card { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; border-left: 5px solid #00d2ff; margin-bottom: 15px; }
+        .req-card p { font-size: 14px; color: #ccc; margin-bottom: 5px; }
+        .req-card span { font-weight: bold; color: white; }
+        .amount { font-size: 20px; color: #00ff88; font-weight: bold; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-approve { background: #00b35c; }
+        .btn-reject { background: #ff4d4d; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Withdrawal Requests</h2>
+        <button class="btn btn-reject" onclick="location.href='admin_home.html'">Back</button>
+    </div>
+
+    <div id="reqContainer">Loading...</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    db.ref("withdraw_requests").on("value", snap => {
+        let html = "";
+        snap.forEach(child => {
+            let req = child.val();
+            let key = child.key;
+            if(req.status === "pending") {
+                html += `
+                    <div class="req-card">
+                        <p>User: <span>${req.user_name} (${req.user_number})</span></p>
+                        <p>Method: <span>${req.method}</span></p>
+                        <p>Number/ID: <span style="color:#ff9900; user-select:all;">${req.account_number}</span></p>
+                        <p>Time: <span>${req.time}</span></p>
+                        <div class="amount">${req.amount} ৳</div>
+                        <div class="btn-group">
+                            <button class="btn btn-approve" onclick="approveReq('${key}')">Mark as Paid</button>
+                            <button class="btn btn-reject" onclick="rejectReq('${key}', '${req.user_number}', ${req.amount})">Reject (Refund)</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        document.getElementById("reqContainer").innerHTML = html || "<p>No pending requests.</p>";
+    });
+
+    function approveReq(key) {
+        if(confirm("Confirm payment sent?")) db.ref("withdraw_requests/" + key).update({ status: "paid" });
+    }
+
+    function rejectReq(key, userNum, amount) {
+        if(confirm("Reject and refund the user?")) {
+            db.ref("users/" + userNum + "/balance").transaction(current => (current || 0) + amount).then(() => {
+                db.ref("withdraw_requests/" + key).update({ status: "rejected" });
+            });
+        }
+    }
+</script>
+</body>
+</html>
