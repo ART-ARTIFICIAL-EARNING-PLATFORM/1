@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management Admin</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: #0f2027; color: white; padding: 20px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h2 { color: #00d2ff; }
+        .back-btn { background: #ff4d4d; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; background: rgba(255,255,255,0.1); color: white; transition: 0.3s; }
+        .tab-btn.active { background: #00d2ff; color: #0f2027; box-shadow: 0 0 15px rgba(0, 210, 255, 0.4); }
+        
+        /* Containers */
+        .tab-content { display: none; }
+        .tab-content.active { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Card Style */
+        .task-card {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            padding: 20px; border-radius: 12px; position: relative;
+        }
+        .task-header { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 15px; }
+        .task-header h3 { color: #00ff88; font-size: 18px; }
+        .time-badge { font-size: 12px; color: #ccc; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 15px; }
+
+        /* Auto-fill Section */
+        .autofill-box { margin-bottom: 15px; }
+        .autofill-box textarea {
+            width: 100%; height: 60px; background: rgba(0,0,0,0.3); border: 1px dashed #00d2ff;
+            color: white; padding: 10px; border-radius: 8px; resize: none; margin-bottom: 5px; outline: none;
+        }
+        .autofill-btn { background: #ff9900; color: #0f2027; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }
+
+        /* Form Inputs */
+        .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+        .input-group input {
+            padding: 8px 12px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.2); color: white; outline: none;
+        }
+        .input-group input:focus { border-color: #00d2ff; }
+
+        .btn-send { background: #00d2ff; color: #0f2027; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-send:hover { background: white; }
+
+        /* Review Card Specifics */
+        .details-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #ff9900; }
+        .details-box p { font-size: 13px; color: #ccc; margin-bottom: 5px; }
+        .details-box span { color: white; font-weight: bold; }
+        
+        .action-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-approve { background: #00ff88; color: #0f2027; flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-reject { background: #ff4d4d; color: white; flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Task Management</h2>
+        <button class="back-btn" onclick="location.href='admin_home.html'">Back</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('pending')">New Requests <span id="pendingCount">(0)</span></button>
+        <button class="tab-btn" onclick="switchTab('review')">Submissions <span id="reviewCount">(0)</span></button>
+    </div>
+
+    <!-- Pending Requests List -->
+    <div id="pending" class="tab-content active"></div>
+
+    <!-- Submitted Review List -->
+    <div id="review" class="tab-content"></div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyB9atiIYLHR_0-2pVhq5olkEzFLCk4t_p4",
+        authDomain: "fir-f4489.firebaseapp.com",
+        projectId: "fir-f4489"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Voice Notification Engine
+    let initialLoad = true;
+    function playVoice(text) {
+        if(!initialLoad) {
+            let msg = new SpeechSynthesisUtterance();
+            msg.text = text;
+            msg.lang = "en-US";
+            window.speechSynthesis.speak(msg);
+        }
+    }
+
+    // Tab Switcher
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    // Listen for Realtime Task Updates
+    db.ref("task_requests").on("value", snap => {
+        let pendingHTML = "";
+        let reviewHTML = "";
+        let pCount = 0;
+        let rCount = 0;
+
+        snap.forEach(child => {
+            let req = child.val();
+            let key = child.key; // This is the user's number
+            
+            let timeStr = new Date(req.request_time || req.submit_time || Date.now()).toLocaleTimeString();
+
+            if (req.status === "pending") {
+                pCount++;
+                pendingHTML += `
+                    <div class="task-card">
+                        <div class="task-header">
+                            <h3>${req.name}</h3>
+                            <div class="time-badge"><i class="far fa-clock"></i> Applied at ${timeStr}</div>
+                        </div>
+                        <p style="font-size:12px; color:#ccc; margin-bottom:10px;">User Number: ${key}</p>
+                        
+                        <div class="autofill-box">
+                            <textarea id="paste_${key}" placeholder="Paste all details here... (FirstName, LastName, DOB, Gmail, Password)"></textarea>
+                            <button class="autofill-btn" onclick="autoFill('${key}')"><i class="fas fa-magic"></i> Auto Fill</button>
+                        </div>
+
+                        <div class="input-group"><input type="text" id="fn_${key}" placeholder="First Name"></div>
+                        <div class="input-group"><input type="text" id="ln_${key}" placeholder="Last Name"></div>
+                        <div class="input-group"><input type="text" id="dob_${key}" placeholder="Birthday (DD/MM/YYYY)"></div>
+                        <div class="input-group"><input type="text" id="gm_${key}" placeholder="Gmail Address"></div>
+                        <div class="input-group"><input type="text" id="ps_${key}" placeholder="Password"></div>
+                        
+                        <button class="btn-send" onclick="sendTask('${key}')"><i class="fas fa-paper-plane"></i> Send Task Now</button>
+                    </div>
+                `;
+            } 
+            else if (req.status === "submitted") {
+                rCount++;
+                pendingHTML += ""; // Not pending
+                reviewHTML += `
+                    <div class="task-card" style="border-left: 4px solid #00ff88;">
+                        <div class="task-header">
+                            <h3>${req.name}</h3>
+                            <div class="time-badge"><i class="fas fa-check-circle"></i> Submitted: ${timeStr}</div>
+                        </div>
+                        
+                        <div class="details-box">
+                            <p style="color:#00d2ff;">Admin Sent Details:</p>
+                            <p>Gmail: <span>${req.details.gmail}</span></p>
+                            <p>Pass: <span>${req.details.password}</span></p>
+                        </div>
+                        
+                        <div class="details-box" style="border-left: 3px solid #00ff88;">
+                            <p style="color:#00ff88;">User Submitted Work:</p>
+                            <p>Created Gmail: <span>${req.submitted_details.gmail}</span></p>
+                            <p>Created Pass: <span>${req.submitted_details.password}</span></p>
+                        </div>
+                        
+                        <div class="action-btns">
+                            <button class="btn-approve" onclick="approveTask('${key}')"><i class="fas fa-check"></i> Approve (Pay 50৳)</button>
+                            <button class="btn-reject" onclick="rejectTask('${key}')"><i class="fas fa-times"></i> Reject</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        document.getElementById("pending").innerHTML = pendingHTML || "<p style='color:#ccc; padding:20px;'>No new pending requests.</p>";
+        document.getElementById("review").innerHTML = reviewHTML || "<p style='color:#ccc; padding:20px;'>No submitted tasks for review.</p>";
+        document.getElementById("pendingCount").innerText = `(${pCount})`;
+        document.getElementById("reviewCount").innerText = `(${rCount})`;
+
+        initialLoad = false; // Prevent voice alert on first page load
+    });
+
+    // Voice Triggers
+    db.ref("task_requests").on("child_added", snap => {
+        if(snap.val().status === "pending") playVoice("Sir, a new task request received.");
+    });
+    db.ref("task_requests").on("child_changed", snap => {
+        if(snap.val().status === "submitted") playVoice("Sir, a task has been submitted for review.");
+    });
+
+    // Auto Fill Logic
+    function autoFill(key) {
+        let text = document.getElementById("paste_" + key).value;
+        let lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        if(lines.length >= 5) {
+            document.getElementById("fn_" + key).value = lines[0];
+            document.getElementById("ln_" + key).value = lines[1];
+            document.getElementById("dob_" + key).value = lines[2];
+            document.getElementById("gm_" + key).value = lines[3];
+            document.getElementById("ps_" + key).value = lines[4];
+        } else {
+            alert("Please paste exactly 5 lines (Firstname, Lastname, DOB, Gmail, Password)!");
+        }
+    }
+
+    // Send Task to User
+    function sendTask(key) {
+        let fn = document.getElementById("fn_" + key).value;
+        let ln = document.getElementById("ln_" + key).value;
+        let dob = document.getElementById("dob_" + key).value;
+        let gm = document.getElementById("gm_" + key).value;
+        let ps = document.getElementById("ps_" + key).value;
+
+        if(!fn || !ln || !dob || !gm || !ps) return alert("All fields are required!");
+
+        db.ref("task_requests/" + key).update({
+            status: "assigned",
+            assigned_time: Date.now(),
+            details: { fname: fn, lname: ln, dob: dob, gmail: gm, password: ps }
+        }).then(() => alert("Task sent to user successfully!"));
+    }
+
+    // Approve Task (+50 Tk & +1 Complete)
+    function approveTask(userNum) {
+        if(confirm("Approve task and add 50 ৳ to user's balance?")) {
+            // Update User Profile
+            db.ref("users/" + userNum).transaction(user => {
+                if(user) {
+                    user.balance = (user.balance || 0) + 50;
+                    user.completed_tasks = (user.completed_tasks || 0) + 1;
+                }
+                return user;
+            }).then(() => {
+                // Delete Request from Queue
+                db.ref("task_requests/" + userNum).remove();
+            });
+        }
+    }
+
+    // Reject Task (+1 Failed)
+    function rejectTask(userNum) {
+        if(confirm("Are you sure you want to reject this task?")) {
+            db.ref("users/" + userNum).transaction(user => {
+                if(user) {
+                    user.failed_tasks = (user.failed_tasks || 0) + 1;
+                }
+                return user;
+            }).then(() => {
+                db.ref("task_requests/" + userNum).remove();
+            });
+        }
+    }
+</script>
+</body>
+</html>
