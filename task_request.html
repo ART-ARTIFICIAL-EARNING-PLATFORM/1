@@ -27,28 +27,19 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Card Style */
-        .task-card {
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            padding: 20px; border-radius: 12px; position: relative;
-        }
+        .task-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; }
         .task-header { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 15px; }
         .task-header h3 { color: #00ff88; font-size: 18px; }
         .time-badge { font-size: 12px; color: #ccc; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 15px; }
 
         /* Auto-fill Section */
         .autofill-box { margin-bottom: 15px; }
-        .autofill-box textarea {
-            width: 100%; height: 60px; background: rgba(0,0,0,0.3); border: 1px dashed #00d2ff;
-            color: white; padding: 10px; border-radius: 8px; resize: none; margin-bottom: 5px; outline: none;
-        }
-        .autofill-btn { background: #ff9900; color: #0f2027; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .autofill-box textarea { width: 100%; height: 80px; background: rgba(0,0,0,0.3); border: 1px dashed #00d2ff; color: white; padding: 10px; border-radius: 8px; resize: none; margin-bottom: 5px; outline: none; }
+        .autofill-btn { background: #ff9900; color: #0f2027; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold; }
 
         /* Form Inputs */
         .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
-        .input-group input {
-            padding: 8px 12px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.2); color: white; outline: none;
-        }
+        .input-group input { padding: 8px 12px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; outline: none; }
         .input-group input:focus { border-color: #00d2ff; }
 
         .btn-send { background: #00d2ff; color: #0f2027; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
@@ -62,7 +53,6 @@
         .action-btns { display: flex; gap: 10px; margin-top: 15px; }
         .btn-approve { background: #00ff88; color: #0f2027; flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-reject { background: #ff4d4d; color: white; flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-
     </style>
 </head>
 <body>
@@ -77,10 +67,7 @@
         <button class="tab-btn" onclick="switchTab('review')">Submissions <span id="reviewCount">(0)</span></button>
     </div>
 
-    <!-- Pending Requests List -->
     <div id="pending" class="tab-content active"></div>
-
-    <!-- Submitted Review List -->
     <div id="review" class="tab-content"></div>
 
 <script>
@@ -92,18 +79,15 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Voice Notification Engine
     let initialLoad = true;
     function playVoice(text) {
         if(!initialLoad) {
             let msg = new SpeechSynthesisUtterance();
-            msg.text = text;
-            msg.lang = "en-US";
+            msg.text = text; msg.lang = "en-US";
             window.speechSynthesis.speak(msg);
         }
     }
 
-    // Tab Switcher
     function switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -111,17 +95,13 @@
         event.currentTarget.classList.add('active');
     }
 
-    // Listen for Realtime Task Updates
     db.ref("task_requests").on("value", snap => {
-        let pendingHTML = "";
-        let reviewHTML = "";
-        let pCount = 0;
-        let rCount = 0;
+        let pendingHTML = ""; let reviewHTML = "";
+        let pCount = 0; let rCount = 0;
 
         snap.forEach(child => {
             let req = child.val();
-            let key = child.key; // This is the user's number
-            
+            let key = child.key; 
             let timeStr = new Date(req.request_time || req.submit_time || Date.now()).toLocaleTimeString();
 
             if (req.status === "pending") {
@@ -135,7 +115,7 @@
                         <p style="font-size:12px; color:#ccc; margin-bottom:10px;">User Number: ${key}</p>
                         
                         <div class="autofill-box">
-                            <textarea id="paste_${key}" placeholder="Paste all details here... (FirstName, LastName, DOB, Gmail, Password)"></textarea>
+                            <textarea id="paste_${key}" placeholder="Paste full details here..."></textarea>
                             <button class="autofill-btn" onclick="autoFill('${key}')"><i class="fas fa-magic"></i> Auto Fill</button>
                         </div>
 
@@ -151,7 +131,6 @@
             } 
             else if (req.status === "submitted") {
                 rCount++;
-                pendingHTML += ""; // Not pending
                 reviewHTML += `
                     <div class="task-card" style="border-left: 4px solid #00ff88;">
                         <div class="task-header">
@@ -185,34 +164,34 @@
         document.getElementById("pendingCount").innerText = `(${pCount})`;
         document.getElementById("reviewCount").innerText = `(${rCount})`;
 
-        initialLoad = false; // Prevent voice alert on first page load
+        initialLoad = false; 
     });
 
-    // Voice Triggers
-    db.ref("task_requests").on("child_added", snap => {
-        if(snap.val().status === "pending") playVoice("Sir, a new task request received.");
-    });
-    db.ref("task_requests").on("child_changed", snap => {
-        if(snap.val().status === "submitted") playVoice("Sir, a task has been submitted for review.");
-    });
+    db.ref("task_requests").on("child_added", snap => { if(snap.val().status === "pending") playVoice("Sir, a new task request received."); });
+    db.ref("task_requests").on("child_changed", snap => { if(snap.val().status === "submitted") playVoice("Sir, a task has been submitted for review."); });
 
-    // Auto Fill Logic
+    // UPDATED SMART AUTO-FILL LOGIC
     function autoFill(key) {
         let text = document.getElementById("paste_" + key).value;
-        let lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         
-        if(lines.length >= 5) {
-            document.getElementById("fn_" + key).value = lines[0];
-            document.getElementById("ln_" + key).value = lines[1];
-            document.getElementById("dob_" + key).value = lines[2];
-            document.getElementById("gm_" + key).value = lines[3];
-            document.getElementById("ps_" + key).value = lines[4];
-        } else {
-            alert("Please paste exactly 5 lines (Firstname, Lastname, DOB, Gmail, Password)!");
+        let fnMatch = text.match(/First name:\s*(.*)/i);
+        let lnMatch = text.match(/Last name:\s*(.*)/i);
+        let dobMatch = text.match(/(?:Birthdate|Birthday):\s*(.*)/i);
+        // Matching "Email:" or "Gmail:" exactly to avoid taking "Recovery email:"
+        let gmMatch = text.match(/^[ \t]*(?:Email|Gmail):\s*(.*)/im) || text.match(/(?:Email|Gmail):\s*([^ \n]+@[^ \n]+)/i);
+        let passMatch = text.match(/Password:\s*(.*)/i);
+
+        document.getElementById("fn_" + key).value = fnMatch ? fnMatch[1].trim() : "";
+        document.getElementById("ln_" + key).value = lnMatch ? lnMatch[1].trim() : "";
+        document.getElementById("dob_" + key).value = dobMatch ? dobMatch[1].trim() : "";
+        document.getElementById("gm_" + key).value = gmMatch ? gmMatch[1].trim() : "";
+        document.getElementById("ps_" + key).value = passMatch ? passMatch[1].trim() : "";
+        
+        if(!fnMatch || !gmMatch || !passMatch) {
+            alert("Warning: Could not find some details. Please check your pasted text.");
         }
     }
 
-    // Send Task to User
     function sendTask(key) {
         let fn = document.getElementById("fn_" + key).value;
         let ln = document.getElementById("ln_" + key).value;
@@ -229,34 +208,24 @@
         }).then(() => alert("Task sent to user successfully!"));
     }
 
-    // Approve Task (+50 Tk & +1 Complete)
     function approveTask(userNum) {
         if(confirm("Approve task and add 50 ৳ to user's balance?")) {
-            // Update User Profile
             db.ref("users/" + userNum).transaction(user => {
                 if(user) {
                     user.balance = (user.balance || 0) + 50;
                     user.completed_tasks = (user.completed_tasks || 0) + 1;
                 }
                 return user;
-            }).then(() => {
-                // Delete Request from Queue
-                db.ref("task_requests/" + userNum).remove();
-            });
+            }).then(() => { db.ref("task_requests/" + userNum).remove(); });
         }
     }
 
-    // Reject Task (+1 Failed)
     function rejectTask(userNum) {
         if(confirm("Are you sure you want to reject this task?")) {
             db.ref("users/" + userNum).transaction(user => {
-                if(user) {
-                    user.failed_tasks = (user.failed_tasks || 0) + 1;
-                }
+                if(user) { user.failed_tasks = (user.failed_tasks || 0) + 1; }
                 return user;
-            }).then(() => {
-                db.ref("task_requests/" + userNum).remove();
-            });
+            }).then(() => { db.ref("task_requests/" + userNum).remove(); });
         }
     }
 </script>
