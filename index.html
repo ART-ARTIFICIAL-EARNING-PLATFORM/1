@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin System Loading...</title>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            height: 100vh; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; color: white;
+        }
+
+        .loading-container {
+            text-align: center; width: 100%; max-width: 400px;
+            padding: 40px 20px; background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px); border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            animation: slideUp 0.8s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .icon-container { margin-bottom: 20px; position: relative; }
+        .glow-icon {
+            font-size: 70px; color: #00d2ff;
+            text-shadow: 0 0 20px rgba(0, 210, 255, 0.8), 0 0 40px rgba(0, 210, 255, 0.5);
+            animation: pulseIcon 2s infinite alternate;
+        }
+
+        @keyframes pulseIcon {
+            0% { transform: scale(1); text-shadow: 0 0 20px rgba(0, 210, 255, 0.5); }
+            100% { transform: scale(1.1); text-shadow: 0 0 40px rgba(0, 210, 255, 1); color: #00ff88; }
+        }
+
+        .loading-text { font-size: 18px; font-weight: bold; letter-spacing: 2px; margin-bottom: 25px; color: #00d2ff; animation: blinkText 1.5s infinite; }
+        @keyframes blinkText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* Progress Bar */
+        .progress-box { width: 100%; background: rgba(0, 0, 0, 0.5); border-radius: 15px; height: 10px; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.2); }
+        .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #00d2ff, #00ff88); border-radius: 15px; box-shadow: 0 0 15px rgba(0, 255, 136, 0.8); transition: width 0.2s ease; }
+
+        .percentage { margin-top: 15px; font-size: 24px; font-weight: bold; color: #00ff88; font-family: monospace; }
+        
+        .status-messages { font-size: 12px; color: #aaa; margin-top: 10px; height: 15px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="loading-container">
+        <div class="icon-container">
+            <i class="fas fa-user-shield glow-icon"></i>
+        </div>
+        
+        <div class="loading-text">ADMIN PANEL</div>
+        
+        <div class="progress-box">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div class="percentage" id="percentageText">0%</div>
+        <div class="status-messages" id="statusMessage">Initializing System...</div>
+    </div>
+
+<script>
+    // JS Logic for Loading Animation and Auto-Redirect
+    let progress = 0;
+    const progressBar = document.getElementById('progressBar');
+    const percentageText = document.getElementById('percentageText');
+    const statusMessage = document.getElementById('statusMessage');
+
+    const loadingInterval = setInterval(() => {
+        // Random increment between 1 and 6 for a realistic loading feel
+        let step = Math.floor(Math.random() * 6) + 1;
+        progress += step;
+
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(loadingInterval);
+            statusMessage.innerText = "System Ready! Redirecting...";
+            statusMessage.style.color = "#00ff88";
+            
+            // Redirect to admin_home.html after completing 100%
+            setTimeout(() => {
+                window.location.href = "admin_home.html";
+            }, 800); // Wait 0.8 seconds before redirect
+        }
+
+        // Update UI
+        progressBar.style.width = progress + '%';
+        percentageText.innerText = progress + '%';
+
+        // Dynamic Status Text Update
+        if (progress > 20 && progress < 45) {
+            statusMessage.innerText = "Connecting to Firebase Database...";
+        } else if (progress >= 45 && progress < 70) {
+            statusMessage.innerText = "Fetching User Data & Settings...";
+        } else if (progress >= 70 && progress < 90) {
+            statusMessage.innerText = "Securing Connection...";
+        } else if (progress >= 90 && progress < 100) {
+            statusMessage.innerText = "Finalizing...";
+        }
+
+    }, 100); // Speed of the interval
+</script>
+
+</body>
+</html>
