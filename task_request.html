@@ -11,45 +11,30 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
         body { background: #0f2027; color: white; padding: 20px; }
-        
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
         .header h2 { color: #00d2ff; }
         .back-btn { background: #ff4d4d; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        
-        /* Tabs */
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
         .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; background: rgba(255,255,255,0.1); color: white; transition: 0.3s; }
         .tab-btn.active { background: #00d2ff; color: #0f2027; box-shadow: 0 0 15px rgba(0, 210, 255, 0.4); }
-        
-        /* Containers */
         .tab-content { display: none; }
         .tab-content.active { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Card Style */
         .task-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; }
         .task-header { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 15px; }
         .task-header h3 { color: #00ff88; font-size: 18px; }
         .time-badge { font-size: 12px; color: #ccc; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 15px; }
-
-        /* Auto-fill Section */
         .autofill-box { margin-bottom: 15px; }
         .autofill-box textarea { width: 100%; height: 80px; background: rgba(0,0,0,0.3); border: 1px dashed #00d2ff; color: white; padding: 10px; border-radius: 8px; resize: none; margin-bottom: 5px; outline: none; }
         .autofill-btn { background: #ff9900; color: #0f2027; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold; }
-
-        /* Form Inputs */
         .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
         .input-group input { padding: 8px 12px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; outline: none; }
         .input-group input:focus { border-color: #00d2ff; }
-
         .btn-send { background: #00d2ff; color: #0f2027; width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-send:hover { background: white; }
-
-        /* Review Card Specifics */
         .details-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #ff9900; }
         .details-box p { font-size: 13px; color: #ccc; margin-bottom: 5px; }
         .details-box span { color: white; font-weight: bold; }
-        
         .action-btns { display: flex; gap: 10px; margin-top: 15px; }
         .btn-approve { background: #00ff88; color: #0f2027; flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-reject { background: #ff4d4d; color: white; flex: 1; padding: 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
@@ -163,21 +148,17 @@
         document.getElementById("review").innerHTML = reviewHTML || "<p style='color:#ccc; padding:20px;'>No submitted tasks for review.</p>";
         document.getElementById("pendingCount").innerText = `(${pCount})`;
         document.getElementById("reviewCount").innerText = `(${rCount})`;
-
         initialLoad = false; 
     });
 
     db.ref("task_requests").on("child_added", snap => { if(snap.val().status === "pending") playVoice("Sir, a new task request received."); });
     db.ref("task_requests").on("child_changed", snap => { if(snap.val().status === "submitted") playVoice("Sir, a task has been submitted for review."); });
 
-    // UPDATED SMART AUTO-FILL LOGIC
     function autoFill(key) {
         let text = document.getElementById("paste_" + key).value;
-        
         let fnMatch = text.match(/First name:\s*(.*)/i);
         let lnMatch = text.match(/Last name:\s*(.*)/i);
         let dobMatch = text.match(/(?:Birthdate|Birthday):\s*(.*)/i);
-        // Matching "Email:" or "Gmail:" exactly to avoid taking "Recovery email:"
         let gmMatch = text.match(/^[ \t]*(?:Email|Gmail):\s*(.*)/im) || text.match(/(?:Email|Gmail):\s*([^ \n]+@[^ \n]+)/i);
         let passMatch = text.match(/Password:\s*(.*)/i);
 
@@ -186,10 +167,6 @@
         document.getElementById("dob_" + key).value = dobMatch ? dobMatch[1].trim() : "";
         document.getElementById("gm_" + key).value = gmMatch ? gmMatch[1].trim() : "";
         document.getElementById("ps_" + key).value = passMatch ? passMatch[1].trim() : "";
-        
-        if(!fnMatch || !gmMatch || !passMatch) {
-            alert("Warning: Could not find some details. Please check your pasted text.");
-        }
     }
 
     function sendTask(key) {
@@ -208,16 +185,93 @@
         }).then(() => alert("Task sent to user successfully!"));
     }
 
+    // ==========================================
+    // SMART APPROVE TASK & REFERRAL BONUS LOGIC
+    // ==========================================
     function approveTask(userNum) {
-        if(confirm("Approve task and add 50 ৳ to user's balance?")) {
-            db.ref("users/" + userNum).transaction(user => {
-                if(user) {
-                    user.balance = (user.balance || 0) + 50;
-                    user.completed_tasks = (user.completed_tasks || 0) + 1;
+        if(!confirm("Approve task and add 50 ৳ to user's balance?")) return;
+
+        db.ref("users/" + userNum).once("value", snapshot => {
+            if(snapshot.exists()) {
+                let user = snapshot.val();
+                let currentTasks = user.completed_tasks || 0;
+                let newTasks = currentTasks + 1;
+                
+                // চেক করা হচ্ছে ইউজারের এটা ৩য় টাস্ক কি না (অর্থাৎ সে মাত্র অ্যাক্টিভ হলো কি না)
+                let isNewlyActivated = (newTasks === 3 && user.status !== "active");
+
+                let updates = {
+                    balance: (user.balance || 0) + 50,
+                    completed_tasks: newTasks
+                };
+
+                // যদি ৩টা টাস্ক হয়ে যায়, স্ট্যাটাস অ্যাক্টিভ করে দাও
+                if (isNewlyActivated) {
+                    updates.status = "active";
                 }
-                return user;
-            }).then(() => { db.ref("task_requests/" + userNum).remove(); });
-        }
+
+                // ইউজার ডেটা আপডেট
+                db.ref("users/" + userNum).update(updates).then(() => {
+                    db.ref("task_requests/" + userNum).remove(); // টাস্ক রিমুভ
+                    
+                    // যদি ইউজার মাত্র অ্যাক্টিভ হয়ে থাকে, তাহলে তার আপলাইনদের বোনাস দাও!
+                    if (isNewlyActivated && user.referred_by !== "none") {
+                        distributeReferralBonus(user.referred_by);
+                    }
+                });
+            }
+        });
+    }
+
+    // Level 1, 2, 3 Bonus Distribution Engine
+    function distributeReferralBonus(level1RefCode) {
+        if (!level1RefCode || level1RefCode === "none") return;
+
+        // 1. Get Pricing Settings
+        db.ref("admin_settings/referral_pricing").once("value", settingSnap => {
+            let settings = settingSnap.val() || { level_1: 0, level_2: 0, level_3: 0 };
+            
+            // 2. Get All Users to find matches
+            db.ref("users").once("value", usersSnap => {
+                let usersData = usersSnap.val();
+                if (!usersData) return;
+
+                // Helper Function: Find user phone number by referral code
+                function findUserByCode(code) {
+                    for (let key in usersData) {
+                        if (usersData[key].my_referral_code === code) return key;
+                    }
+                    return null;
+                }
+
+                // --- LEVEL 1 BONUS (Direct Partner) ---
+                let l1Key = findUserByCode(level1RefCode);
+                if (l1Key) {
+                    db.ref("users/" + l1Key + "/balance").transaction(b => (b || 0) + settings.level_1);
+                    console.log("Level 1 Paid:", settings.level_1);
+                    
+                    // --- LEVEL 2 BONUS (Downline) ---
+                    let level2RefCode = usersData[l1Key].referred_by;
+                    if (level2RefCode && level2RefCode !== "none") {
+                        let l2Key = findUserByCode(level2RefCode);
+                        if (l2Key) {
+                            db.ref("users/" + l2Key + "/balance").transaction(b => (b || 0) + settings.level_2);
+                            console.log("Level 2 Paid:", settings.level_2);
+                            
+                            // --- LEVEL 3 BONUS (Deep Downline) ---
+                            let level3RefCode = usersData[l2Key].referred_by;
+                            if (level3RefCode && level3RefCode !== "none") {
+                                let l3Key = findUserByCode(level3RefCode);
+                                if (l3Key) {
+                                    db.ref("users/" + l3Key + "/balance").transaction(b => (b || 0) + settings.level_3);
+                                    console.log("Level 3 Paid:", settings.level_3);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
     }
 
     function rejectTask(userNum) {
